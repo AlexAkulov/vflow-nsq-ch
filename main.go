@@ -17,6 +17,7 @@ type options struct {
 	CHTable string
 	BatchSize int
 	BatchPeriod int
+	DryRun bool
 }
 
 type dataField struct {
@@ -43,11 +44,11 @@ var opts options
 func init() {
 	flag.StringVar(&opts.NSQDUri, "nsqd", "127.0.0.1:4150", "nsqd ipaddress:port")
 	flag.StringVar(&opts.Topic, "topic", "nsq", "nsq topic")
-	flag.BoolVar(&opts.Debug, "debug", false, "enabled/disabled debug")
 	flag.StringVar(&opts.CHUri, "ch-uri", "http://127.0.0.1:9000?debug=false", "ClickHouse URI proto://ipaddress:port")
 	flag.StringVar(&opts.CHTable, "ch-table", "wssg.vflow", "ClickHouse table")
 	flag.IntVar(&opts.BatchSize, "batch-size", 1000, "Max rows in batch to ClickHouse")
 	flag.IntVar(&opts.BatchPeriod, "batch-period", 10, "Max period between batches to ClickHouse in seconds")
+	flag.BoolVar(&opts.DryRun, "dry-run", false, "Dry Run")
 
 	flag.Parse()
 }
@@ -65,7 +66,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-
 	c := &Consumer{
 		Topic: opts.Topic,
 		URI: opts.NSQDUri,
@@ -75,11 +75,11 @@ func main() {
 	if err := c.Start(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Started")
 
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	log.Println(<-signalChannel)
-
 
 	if err := c.Stop(); err != nil {
 		log.Print("Can't stop Consumer with err: ", err)
@@ -88,6 +88,7 @@ func main() {
 	if err := p.Stop(); err != nil {
 		log.Print("Can't stop Publisher with err: ", err)
 	}
+	log.Println("Stopped")
 }
 
 

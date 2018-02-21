@@ -18,6 +18,7 @@ type Publisher struct {
 	BatchPeriod int64
 	URI         string
 	Table       string
+	DryRun		bool
 }
 
 type batch struct {
@@ -28,11 +29,11 @@ type batch struct {
 func (p *Publisher) Start() error {
 	var err error
 	if p.connect, err = sql.Open("clickhouse", p.URI); err != nil {
-		return err
+		return fmt.Errorf("Can't connect to ClickHouse with err: '%v'", err)
 	}
 
 	if err := p.connect.Ping(); err != nil {
-		return err
+		return fmt.Errorf("Can't ping ClickHouse with err: '%v'", err)
 	}
 
 	p.muster = &muster.Client{
@@ -45,6 +46,7 @@ func (p *Publisher) Start() error {
 }
 
 func (p *Publisher) Publish(obj *ipfix) error {
+	log.Printf("DEBUG Receive message")
 	p.muster.Work <- obj
 	return nil
 }
@@ -61,6 +63,10 @@ func (b *batch) Add(item interface{}) {
 
 func (b *batch) Fire(notifier muster.Notifier) {
 	defer notifier.Done()
+	log.Printf("Try write bulk with %d rows", len(b.Items))
+	if b.Publisher.DryRun {
+		return
+	}
 	tx, err := b.Publisher.connect.Begin()
 	if err != nil {
 		log.Printf("Can't begin connection to ClickHouse with err: '%v' Lost: %d messages", err, len(b.Items))
