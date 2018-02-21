@@ -60,6 +60,7 @@ func main() {
 		BatchPeriod: int64(opts.BatchPeriod),
 		URI: opts.CHUri,
 		Table: opts.CHTable,
+		DryRun: opts.DryRun,
 	}
 
 	if err := p.Start(); err != nil {
